@@ -1,0 +1,287 @@
+From 43c582d5001233a2d76f7a8d197ef42595238276 Mon Sep 17 00:00:00 2001
+From: IAHM-COL <israel.a.hernandez@gmail.com>
+Date: Sat, 11 Jun 2016 21:01:35 -0700
+Subject: [PATCH] chatter-patch
+
+---
+ Nasal/atc-chatter/atc-chatter.nas | 115 ++++++++++++++++++++++++++++++++++++++
+ Nasal/gui.nas                     |   5 ++
+ gui/dialogs/sound.xml             |  54 ++++++++++++++----
+ 3 files changed, 164 insertions(+), 10 deletions(-)
+ create mode 100644 Nasal/atc-chatter/atc-chatter.nas
+
+diff --git a/Nasal/atc-chatter/atc-chatter.nas b/Nasal/atc-chatter/atc-chatter.nas
+new file mode 100644
+index 0000000..7819633
+--- /dev/null
++++ b/Nasal/atc-chatter/atc-chatter.nas
+@@ -0,0 +1,115 @@
++#############################################################################
++#
++# Simple sequenced ATC background chatter function
++#
++# Written by Curtis Olson
++# Started 8 Jan 2006.
++#
++#############################################################################
++
++#############################################################################
++# Global shared variables
++#############################################################################
++
++var fg_root = nil;
++var chatter = "UK";
++var chatter_dir = "";
++
++var chatter_min_interval = 20.0;
++var chatter_max_interval = 40.0;
++var next_interval = nil;
++
++var chatter_index = 0;
++var chatter_size = 0;
++var chatter_list = 0;
++
++
++#############################################################################
++# Chatter is initialized only when actually enabled. See listener connected
++# to /sim/sound/chatter/enabled.
++#############################################################################
++
++var chatter_init = func {
++    # default values
++    fg_root = getprop("/sim/fg-root");
++    chatter_dir = sprintf("%s/ATC/Chatter/%s", fg_root, chatter);
++    chatter_list = directory( chatter_dir );
++    chatter_size = size(chatter_list);
++    # seed the random number generator (with time) so we don't start in
++    # same place in the sequence each run.
++    srand();
++    chatter_index = int( chatter_size * rand() );
++}
++
++
++#############################################################################
++# main update function to be called each frame
++#############################################################################
++
++var chatter_update = func {
++    if ( chatter_index >= chatter_size ) {
++        chatter_index = 0;
++    }
++
++    if ( substr(chatter_list[chatter_index],
++                size(chatter_list[chatter_index]) - 4) == ".wav" )
++    {	
++	var vol =getprop("/sim/sound/chatter/volume");
++	if(vol == nil){vol = 0.5;}
++        tmpl = { path : chatter_dir, file : chatter_list[chatter_index] , volume : vol};
++        if ( getprop("/sim/sound/chatter/enabled") ) {
++            # go through the motions, but only schedule the message to play
++            # if atc-chatter is enabled.
++            printlog("info", "update atc chatter ", chatter_list[chatter_index] );
++	    fgcommand("play-audio-sample", props.Node.new(tmpl) );
++        }
++    } else {
++        # skip non-wav file found in directory
++    }
++
++    chatter_index = chatter_index + 1;
++    nextChatter();
++}
++
++
++#############################################################################
++# Use the nasal timer to update every 10 seconds
++#############################################################################
++
++var nextChatter = func {
++    if (!getprop("/sim/sound/chatter/enabled"))
++    {
++      next_interval = nil;
++      return;
++    }
++
++    # schedule next message in next min-max interval seconds so we have a bit
++    # of a random pacing
++    next_interval = chatter_min_interval
++       + int(rand() * (chatter_max_interval - chatter_min_interval));
++
++    # printlog("info", "next chatter in ", next_interval, " seconds");
++
++    settimer(chatter_update, next_interval );
++}
++
++#############################################################################
++# Start chatter processing. Also connected to chatter/enabled property as a
++# listener.
++#############################################################################
++
++var startChatter = func {
++  if ( getprop("/sim/sound/chatter/enabled") ) {
++    if (fg_root == nil)
++      chatter_init();
++    if (next_interval == nil)
++      nextChatter();
++  }
++}
++
++# connect listener
++_setlistener("/sim/sound/chatter/enabled", startChatter);
++
++# start chatter immediately, if enable is already set.
++settimer(startChatter, 0);
++
+diff --git a/Nasal/gui.nas b/Nasal/gui.nas
+index 52fa72a..7fffef9 100644
+--- a/Nasal/gui.nas
++++ b/Nasal/gui.nas
+@@ -1385,6 +1385,11 @@ _setlistener("/sim/signals/fdm-initialized", func {
+     do_welcome = 0;
+ });
+ 
++# load ATC chatter module on demand
++setprop("/nasal/atc-chatter/enabled", getprop("/sim/sound/chatter/enabled"));
++_setlistener("/sim/sound/chatter/enabled", func {
++    setprop("/nasal/atc-chatter/enabled", getprop("/sim/sound/chatter/enabled"));
++});
+ 
+ ##
+ # overwrite custom shader settings when quality-level is set on startup
+diff --git a/gui/dialogs/sound.xml b/gui/dialogs/sound.xml
+index 1694051..105c9c5 100644
+--- a/gui/dialogs/sound.xml
++++ b/gui/dialogs/sound.xml
+@@ -163,7 +163,7 @@
+     <text>
+       <row>3</row>
+       <col>0</col>
+-      <label>Avionics</label>
++      <label>Chatter</label>
+       <halign>left</halign>
+ 	  <enable>
+         <property>/sim/sound/enabled</property>
+@@ -173,7 +173,7 @@
+     <checkbox>
+       <row>3</row>
+       <col>1</col>
+-      <property>/sim/sound/avionics/enabled</property>
++      <property>/sim/sound/chatter/enabled</property>
+       <binding>
+         <command>dialog-apply</command>
+       </binding>
+@@ -185,6 +185,40 @@
+     <slider>
+       <row>3</row>
+       <col>2</col>
++      <property>/sim/sound/chatter/volume</property>
++      <binding>
++        <command>dialog-apply</command>
++      </binding>
++	  <enable>
++        <property>/sim/sound/enabled</property>
++      </enable>
++    </slider>
++
++    <text>
++      <row>4</row>
++      <col>0</col>
++      <label>Avionics</label>
++      <halign>left</halign>
++	  <enable>
++        <property>/sim/sound/enabled</property>
++      </enable>
++    </text>
++
++    <checkbox>
++      <row>4</row>
++      <col>1</col>
++      <property>/sim/sound/avionics/enabled</property>
++      <binding>
++        <command>dialog-apply</command>
++      </binding>
++	  <enable>
++        <property>/sim/sound/enabled</property>
++      </enable>
++    </checkbox>
++
++    <slider>
++      <row>4</row>
++      <col>2</col>
+       <property>/sim/sound/avionics/volume</property>
+       <binding>
+         <command>dialog-apply</command>
+@@ -195,7 +229,7 @@
+     </slider>
+ 
+     <checkbox>
+-      <row>3</row>
++      <row>4</row>
+       <col>3</col>
+       <property>/sim/sound/avionics/external-view</property>
+       <binding>
+@@ -207,7 +241,7 @@
+     </checkbox>
+ 
+     <text>
+-      <row>4</row>
++      <row>5</row>
+       <col>0</col>
+       <label>ATC</label>
+       <halign>left</halign>
+@@ -217,7 +251,7 @@
+     </text>
+ 
+     <checkbox>
+-      <row>4</row>
++      <row>5</row>
+       <col>1</col>
+       <property>/sim/sound/atc/enabled</property>
+       <binding>
+@@ -229,7 +263,7 @@
+     </checkbox>
+ 
+     <slider>
+-      <row>4</row>
++      <row>5</row>
+       <col>2</col>
+       <property>/sim/sound/atc/volume</property>
+       <binding>
+@@ -241,7 +275,7 @@
+     </slider>
+ 
+     <checkbox>
+-      <row>4</row>
++      <row>5</row>
+       <col>3</col>
+       <property>/sim/sound/atc/external-view</property>
+       <binding>
+@@ -253,7 +287,7 @@
+     </checkbox>
+ 
+     <text>
+-      <row>5</row>
++      <row>6</row>
+       <col>0</col>
+       <label>AI/MP</label>
+       <halign>left</halign>
+@@ -263,7 +297,7 @@
+     </text>
+ 
+     <checkbox>
+-      <row>5</row>
++      <row>6</row>
+       <col>1</col>
+       <property>/sim/sound/aimodels/enabled</property>
+       <binding>
+@@ -275,7 +309,7 @@
+     </checkbox>
+ 
+     <slider>
+-      <row>5</row>
++      <row>6</row>
+       <col>2</col>
+       <property>/sim/sound/aimodels/volume</property>
+       <binding>
+-- 
+2.1.4
+
