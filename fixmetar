@@ -1,0 +1,42 @@
+#!/bin/sh
+#fixmetar
+
+##This file intends to replace the METAR URL in a Flightgear Binary
+##It is intended for usage only on LINUX systems.
+##Must be run with sudo privileges
+##Disclaimer, Use at your own risk
+
+##Dependencies: It requires hexdump, sed and xxd, which is normally present in
+##every linux installation
+
+echo "Note: A backup of the fgfs file is stored for your safety at ~/.fgfs/fgfs"
+
+#1.Backup
+BINDIR=dirname $(which fgfs)
+if [ ! -d ~/.fgfs ]; then
+   mkdir ~/.fgfs -v
+fi
+if [ ! -f ~/.fgfs/fgfs ]; then
+   cp $BINDIR/fgfs ~/.fgfs/fgfs	-v
+   echo "BACKUP ~/.fgfs/fgfs file created"
+   echo " "
+fi
+
+#2.Patching
+hexdump -ve '1/1 "%.2X"' $BINDIR/fgfs | \
+	sed "s@http://weather.noaa.gov/pub/data/observations/metar/stations/@http://tgftp.nws.noaa.gov/data/observations/metar//stations//@g" | \
+	xxd -r -p > ~/.fgfs/fgfs.patched
+echo "PATCHED ~/.fgfs/fgfs.patched file created"
+echo " "
+
+#3. Replacing
+cp ~/.fgfs/fgfs.patched $BINDIR/fgfs -v
+echo " "
+echo "METAR URL UPDATED! :D"
+echo "New URL: http://tgftp.nws.noaa.gov/data/observations/metar//stations//"
+echo " "
+echo "Run fgfs and Happy Fly!"
+
+
+## IAHM-COL, 2016
+## This script is Licensed GPL2+. 
