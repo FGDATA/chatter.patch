@@ -13,6 +13,10 @@ echo "Note: A backup of the fgfs file is stored for your safety at ~/.fgfs/fgfs"
 
 #1.Backup
 BINDIR=dirname $(which fgfs)
+#Abort if fgfs is not find, error code 2
+if [ ! -f $BINDIR/fgfs ]; then
+    exit 2
+fi
 if [ ! -d ~/.fgfs ]; then
    mkdir ~/.fgfs -v
 fi
@@ -36,7 +40,6 @@ echo "METAR URL UPDATED! :D"
 echo "New URL: http://tgftp.nws.noaa.gov/data/observations/metar//stations//"
 echo " "
 echo "Run fgfs and Happy Fly!"
-
 
 ## IAHM-COL, 2016
 ## This script is Licensed GPL2+. 
