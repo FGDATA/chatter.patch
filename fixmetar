@@ -9,14 +9,14 @@
 ##Dependencies: It requires hexdump, sed and xxd, which is normally present in
 ##every linux installation
 
-echo "Note: A backup of the fgfs file is stored for your safety at ~/.fgfs/fgfs"
-
 #1.Backup
 BINDIR=dirname $(which fgfs)
 #Abort if fgfs is not find, error code 2
 if [ ! -f $BINDIR/fgfs ]; then
     exit 2
 fi
+echo "Note: A backup of the fgfs file is stored for your safety at ~/.fgfs/fgfs"
+echo " "
 if [ ! -d ~/.fgfs ]; then
    mkdir ~/.fgfs -v
 fi
