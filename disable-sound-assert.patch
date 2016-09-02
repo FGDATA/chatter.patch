@@ -1,0 +1,25 @@
+From b533825e6f997d5ece7a3ea552d32ccfa32613ed Mon Sep 17 00:00:00 2001
+From: IAHM-COL <israel.a.hernandez@gmail.com>
+Date: Fri, 2 Sep 2016 10:13:43 -0700
+Subject: [PATCH] disable sound assert
+
+---
+ simgear/sound/soundmgr_openal.cxx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/simgear/sound/soundmgr_openal.cxx b/simgear/sound/soundmgr_openal.cxx
+index 247d11a..20b887f 100644
+--- a/simgear/sound/soundmgr_openal.cxx
++++ b/simgear/sound/soundmgr_openal.cxx
+@@ -757,7 +757,7 @@ void SGSoundMgr::sample_destroy( SGSoundSample *sample )
+ bool SGSoundMgr::is_sample_stopped(SGSoundSample *sample)
+ {
+ #ifdef ENABLE_SOUND
+-    assert(sample->is_valid_source());
++  //assert(sample->is_valid_source());
+     unsigned int source = sample->get_source();
+     int result;
+     alGetSourcei( source, AL_SOURCE_STATE, &result );
+-- 
+2.1.4
+
